@@ -90,7 +90,6 @@ why-
 
 
 
-
 test block -
 
     it('flags when a crossing midpoint node is missing tags from the way', function() {
@@ -107,7 +106,6 @@ why -
 - for example, way is highway=footway, footway=crossing, crossing:markings=zebra (very specific) and node is just (highway=crossing) very vague. 
 - Because crossing:markings is in our SYNCED_KEYS list, the validator expects them to be identical. Since they aren't, it triggers the warning.
 - the validator will not throw any error but the specify about mismatch "validator tag mismatch"
-
 
 
 
@@ -150,8 +148,6 @@ why -
 - this test ensures that every single spot where a pedestrian might encounter a car on the path is correctly tagged
 
 
-
-
 test block -
 
     // 5. CLEANUP SAFEGUARD (Section 3.1)
@@ -170,7 +166,6 @@ why-
 - the confict is zebra crossing on a river, this is not pssible and we should delete it 
 - but before deleting, we should check the node if it belongs to crossable road, we must leave the crossing tags alone, even if the current way is not crossable
 - This test verifies that crossing tags are preserved as long as the node has at least one crossable parent way, protecting valid data from being stripped by non-crossable features.
-
 
 
 
@@ -193,6 +188,7 @@ why -
 
  - this block of code will check for boundry logic and make sure our validator dosent go crazy and starts flagging endpoints(ideally endpoints should be empty or contain sideway tags, but then validator will flag lot of errors)
  - this acts as a "Negative test" confirming that the validator correctly ignores valid mapping patterns and does not flag errors where none exist
+
 
 
 test block -
@@ -314,6 +310,7 @@ test block -
         expect(issues[0].subtype).to.eql('mismatched_crossing_tags');
     });
 
+
 why -
 
 - for old data - 
@@ -335,6 +332,7 @@ test block -
         expect(issues[0].subtype).to.eql('mismatched_crossing_tags');
     });
 
+
 why-
 
 - We have two ways of saying same thing: 
@@ -342,7 +340,6 @@ Modern(precise): crossing:signal=yes
 Legacy(Broad): crossing=traffic_signal
 - if a mapper adds the modern crossing:signals=yes tag, validator should check if the legacy equivalent is there. If its missing, it should be flagged as missing tag.
 - This test verifies that the validator maintains "Parallel Tagging." If a mapper provides the modern detail, the validator ensures the legacy equivalent is also present so the map remains functional across all platforms, the fix will suggest adding crossing=traffic_signal to ensure the data is complete for both old and new systems.
-
 
 
 test block-
@@ -384,7 +381,6 @@ code block -
     //             NODE (X) tags:
     //             - highway=crossing
     //             - crossing:markings=zebra
-
 
 
 why -
