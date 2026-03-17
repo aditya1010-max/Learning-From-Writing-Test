@@ -152,9 +152,9 @@ test block -
 
     // 5. CLEANUP SAFEGUARD (Section 3.1)
     it('does not strip crossing tags from a node if it has another crossable parent', function() {
-        var items = createCrossing({ highway: 'stream' }, { 'crossing:markings': 'zebra' });
-        // Even though 'stream' is not crossable, the node is also part of a 'residential' road
-        // (created in our helper), so the crossing tags should be left alone.
+        // Just call the helper to set up the context; we don't need to store the return object
+        createCrossing({ highway: 'stream' }, { 'crossing:markings': 'zebra' });
+
         var issues = validate();
         expect(issues).to.have.lengthOf(0);
     });
