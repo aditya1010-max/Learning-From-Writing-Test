@@ -13,7 +13,7 @@ test block -
 why -
 
 - this block of code will check the logic that will have crossing_ref in the node
-- logic will look at node which has tag- crossing_ref and look at way and see it is absent, then check the Preserve List, and found out crossing_ref is on the list, the logic will ignore it and move on
+- The logic checks a node with the crossing_ref tag, sees that it is absent on the way, then checks the preserve list and finds that crossing_ref is included, so it ignores it and moves on
 - expect(issues).to.have.lengthOf(0); will make sure logic returns nothing
 - "It is okay for a Point to have more specific ID/Asset information than the Line it sits on." 
 
@@ -34,7 +34,7 @@ why-
 
 - this block checks if the node and way both have highway=label tag 
 - the validator needs to know the difference beacuse we only sync tag if it is formal crossing
-- the logic is like - If the Way is explicitly a crossing, the Node must also have the highway=crossing tag to be valid. The validator flags this because you can't have a "Zebra" marking on a point that isn't officially labeled as a crossing point.
+- the validator logic is like - If the Way is explicitly a crossing, the Node must also have the highway=crossing tag to be valid. The validator flags this because you can't have a "Zebra" marking on a point that isn't officially labeled as a crossing point.
 
 
 
@@ -51,10 +51,10 @@ test block -
 why-
 
 - in a scenario where a single point of intersection having two things at once like (a) a set of traffic signals(highway=traffic_signal) (b) a pedestrian crossing(highway=crossing)
-- the conflict occurs when the mapper has defined the way(the path) as having signal(crossing:signal=yes)
+- the conflict occurs when the mapper has defined the way as having signal(crossing:signal=yes)
 however the node only has "traffic signal" badge(no "crossing" badge). This node is a signal, but since its on a crossing path it needs to be labelled as a crossing too 
 - it will be bad if validator try to overwrite the tag, changing traffic_signal to crossing, we would loose information on spot.
-- instead this test proves that validor will surpport multi-value tags. when user clicks "Fix" the validator will join the values with a semicolon. 
+- instead this test verifies that validator will surpport multi-value tags. when user clicks "Fix" the validator will join the values with a semicolon. 
 - New Tag: highway=traffic_signals;crossing
 
 
@@ -83,7 +83,7 @@ test block -
 why-
 
 - this is the case of incomplete data where node is a zebra markings but the highway it lies on dosent have highway=crossing tag. Th way is a crossing but dosent have markings tag 
-- Validator might see that way dosent have marking so the node shouldnt have markings either. This would be a disaster 
+- Validator might see that since the way dosent have marking so the node shouldnt have markings either. This would be a disaster 
 - Instead we use Merging strategy- we first check if the node is missing highway=crossing, then we flag it. When the user hits "Fix", we adds highway=crossing to the node but leave zerbra stripes alone  
 - expect(issues).to.have.lengthOf(1), confirms that validator only sees one thing wrong (the missing highway tag). It does not see the existing zebra stripes as an "error" that needs to be deleted.
 - expect(issues[0].message).to.contain('Missing crossing tag')- This ensures the validator is complaining about the right thing. We want to make sure it's asking for the missing tag, not trying to delete the markings.
@@ -106,7 +106,7 @@ why -
 - this block will check the part of validator that detects the conflict between way and node tags
 - for example, way is highway=footway, footway=crossing, crossing:markings=zebra (very specific) and node is just (highway=crossing) very vague. 
 - Because crossing:markings is in our SYNCED_KEYS list, the validator expects them to be identical. Since they aren't, it triggers the warning.
-- the validator will not throw any error but the specific about mismatch "validator tag mismatch"
+- the validator will not throw any error but the specify about mismatch "validator tag mismatch"
 
 
 
@@ -168,8 +168,8 @@ why-
 
 - the setup is like way1: road(highway=residential) , way2: stream(highway=stream) and node has crossing:marking=zebra
 - the confict is zebra crossing on a river, this is not pssible and we should delete it 
-- but before deleting, we should check if the node, if zebracrossing is not for road then we must leave the alone 
-- This test proves that as long as there is AT LEAST ONE valid, crossable way attached to the node, the crossing tags are safe.
+- but before deleting, we should check the node if it belongs to crossable road, we must leave the crossing tags alone, even if the current way is not crossable
+- This test verifies that crossing tags are preserved as long as the node has at least one crossable parent way, protecting valid data from being stripped by non-crossable features.
 
 
 
@@ -192,8 +192,7 @@ test block -
 why -
 
  - this block of code will check for boundry logic and make sure our validator dosent go crazy and starts flagging endpoints(ideally endpoints should be empty or contain sideway tags, but then validator will flag lot of errors)
- - this is a "Negative test" that will help us find errors and make sure validator dosent find an error where one shouldnt exist 
-
+ - this acts as a "Negative test" confirming that the validator correctly ignores valid mapping patterns and does not flag errors where none exist
 
 
 test block -
@@ -214,10 +213,31 @@ test block -
     });
 
 
+    ROAD WAY
+          |
+          |          n1 (Endpoint - Ignored)
+          |          |
+          |          *
+          |          |
+          |          | 
+----------X----------|----------  <-- (Intersection Node - VALIDATED)
+          |          |
+          |          n2 (Midpoint - Shape only)
+          |          |   Validator logic: "No road intersection? -> Skip"
+          |          *
+          |          |
+          |          |
+          |          *
+          |          |
+                     n3 (Endpoint - Ignored)
+
+     CROSSING WAY (Path)
+
 why -
 
--  its like, if a node it at the midway of way , it dosnet need to be labeled as highway=cossing , whereas if the node is present at the intersection of way and path , then it needs to have crossing tag
-
+- In this logic, if a node is simply a midpoint used to define the shape of a path, it does not need a highway=crossing label. However, if the node exists at the actual intersection of a crossing way and a road, it must carry the crossing tag to be valid
+- X: The intersection. This is the only point that needs the highway=crossing and marking tags because it "connects" the path to the road.
+- *: These are just midpoints or endpoints. Even though they are part of the "crossing way," they don't sit on the road, so they stay "clean" (no crossing tags).
 
 
 
@@ -234,9 +254,9 @@ test block -
 
 why -
 
-- this will test the part of validator that will normalize the crossing=zebra (a legacy tag)
-- we will basically look at the node and see if its empty by comparing crossing=zebra and crossing:marking=zebra
-- if we see nothing in the node then flag the error 
+- this will verify that validator that will correctly identify and normalize the crossing=zebra (a legacy tag)
+- we will compare existing legacy tag on the way against crossing:marking=zebra. the validator will detect the mismatch if the intersection node is empty
+- This ensures that when a user interacts with older map data, the validator automatically suggests "cleaning" the tags during the sync process.
 
 
 
