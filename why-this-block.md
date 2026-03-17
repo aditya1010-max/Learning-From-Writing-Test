@@ -35,6 +35,62 @@ why -
 - standard mappers usually select one option from a dropdown, whereas advance mappers use ; to provide extreme details. the validator will therefore catch simple mistakes(from beginners) and respect the experts who are likely doing something intentional that dosent fit the standard "1-to-1 sysc" model
 
 
+test block -
+    // Point 4.3: Mapping specific signal types from crossing_ref
+    it('maps crossing_ref=pelican to crossing:signals=yes', function() {
+        createCrossing({ 'crossing_ref': 'pelican' }, {});
+        var issues = validate();
+        // This proves the normalization engine understands specific crossing types
+        expect(issues[0].subtype).to.eql('mismatched_crossing_tags');
+    });
+
+why -
+
+- in countries like UK, mappers often use specific names for crossing- like Pelican, Puffin, Toucan("Two-can" cross(Pedestrian + cyclists))
+- When our validator sees crossing_ref=pelican, even if the mapper didnt explicitly tag crossing:signal=yes, it should know its true.
+- when validator runs it should trigger mismatched_crossing_tags beacuse way has high-level info(pelican) and node is missing the specific detail(crossing:signal=yes)
+- validator must flag the mismatch and when user clicks "Fix", the node gets the modern signal tag. This ensures that a routing app for a person with visual impairement knows there is a signalized button at the exact spot, even if the orignal mapper used the British "Pelican" term
+
+
+test block -
+    // Point 4.4: Mapping informal/unmarked legacy tags
+    it('maps crossing=informal to crossing:markings=no', function() {
+        createCrossing({ 'crossing': 'informal' }, {});
+        var issues = validate();
+        // Proves that 'informal' is recognized as 'no markings'
+        expect(issues[0].subtype).to.eql('mismatched_crossing_tags');
+    });
+
+why -
+
+- for old data - 
+if the user clicks on an existing crossing that has crossing=informal, validator will flag it that this should be crossing:marking=no
+- It will also provide a fix- when the user clicks "Fix", the code runs on Action that adds crossing:marking=no and removes old crossing=informal tag beacuse it is now redundant.
+- for new data with Legacy Tags(i need to check if we can still search fr presets)
+- if a user try to manually type crossing=informal manually into the editor today:
+- the sync: validator should imediately see a mismatch between the way and the node
+- The Invisible Sync: In many cases, the editor can be configured to "Auto-Fix" or "Sync on Change"
+- The Goal would be to show "Modern" tags in the UI immediately, even if they typed an "Old" tag
+
+test block -
+
+    // Point 4.6: Setting legacy crossing from modern signals
+    it('sets crossing=traffic_signals when crossing:signals=yes is present', function() {
+        // Start with ONLY modern signal tags
+        createCrossing({ 'crossing:signals': 'yes' }, {});
+        var issues = validate();
+        // The sync/normalization should suggest adding crossing=traffic_signals
+        expect(issues[0].subtype).to.eql('mismatched_crossing_tags');
+    });
+
+why-
+
+- We have two ways of saying same thing: 
+Modern(precise): crossing:signal=yes
+Legacy(Broad): crossing=traffic_signal
+- if a mapper adds the modern crossing:signals=yes tag, validator should check if the legacy equivalent is there. If its missing, it should be flagged as mismatch.
+- sync behaviour in this test - createCrossing will sets up a node/way only with modern:signals=yes then validate() will identify that the crossing key is missing or dosent match the signal status, the fix will be add crossing=traffic_signal to match the modern data when triggered 
+
 
 test block -
 
@@ -221,8 +277,6 @@ test block-
     });
 
 
-why -
-
 Road A (Northbound)          Road B (Southbound)
                |                            |
                |          Node 1            |          Node 2
@@ -231,7 +285,40 @@ Road A (Northbound)          Road B (Southbound)
                |                            |
                |                            |
 
+
+why -
+
 - this scenerio happens when a pedestrian crossing goes across a dual carriageway (a large road with a median or divider in the middle)
 - instead of one single interaction, the crossing path hits the first road, then the second half.
 - validator would check both nodes, checks if it touches road A, checks if it has zebra tags, if not then falg it. Similarly checks 2nd node. 
 - this test ensures that every single spot where a pedestrian might encounter a car on the path is correctly tagged
+
+
+
+test block -
+
+    it('handles incomplete crossing tags by merging instead of overwriting', function() {
+        // Node has markings but no highway=crossing
+        var n = iD.osmNode({id: 'n-1', loc: [0,0], tags: { 'crossing:markings': 'zebra' }});
+        // Way has highway=crossing but no markings
+        var w = iD.osmWay({id: 'w-1', nodes: ['n-start', 'n-1', 'n-end'], 
+            tags: { highway: 'footway', footway: 'crossing' }});
+        var w_road = iD.osmWay({id: 'w-2', nodes: ['n-a', 'n-1', 'n-b'], tags: { highway: 'residential' }});
+
+        context.perform(iD.actionAddEntity(n), iD.actionAddEntity(w), iD.actionAddEntity(w_road));
+
+        var issues = validate();
+        // Victor should notice the node is missing the 'highway=crossing' tag 
+        // but should NOT delete the existing 'zebra' markings.
+        expect(issues).to.have.lengthOf(1);
+        expect(issues[0].message).to.contain('Missing crossing tag'); 
+    });
+
+
+why-
+
+- this is the case of incomplete data where node is a zebra markings but the highway it lies on dosent have highway=crossing tag. Th way is a crossing but dosent have markings tag 
+- Validator might see that way dosent have marking so the node shouldnt have markings either. This would be a disaster 
+- Instead we use Merging strategy- we first check if the node is missing highway=crossing, then we flag it. When the user hits "Fix", we adds highway=crossing to the node but leave zerbra stripes alone  
+- expect(issues).to.have.lengthOf(1), confirms that validator only sees one thing wrong (the missing highway tag). It does not see the existing zebra stripes as an "error" that needs to be deleted.
+- expect(issues[0].message).to.contain('Missing crossing tag')- This ensures the validator is complaining about the right thing. We want to make sure it's asking for the missing tag, not trying to delete the markings.
