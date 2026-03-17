@@ -254,8 +254,8 @@ test block -
 
 why -
 
-- this will verify that validator that will correctly identify and normalize the crossing=zebra (a legacy tag)
-- we will compare existing legacy tag on the way against crossing:marking=zebra. the validator will detect the mismatch if the intersection node is empty
+- this block verifies that validator that will correctly identify and normalize the crossing=zebra (a legacy tag)
+- this logic compares existing legacy tag on the way against crossing:marking=zebra. The validator will detect the mismatch if the intersection node is empty
 - This ensures that when a user interacts with older map data, the validator automatically suggests "cleaning" the tags during the sync process.
 
 
@@ -269,13 +269,23 @@ test block -
         expect(issues).to.have.lengthOf(0);
     });
 
+    TAG CHECK: "crossing:markings"
+                |
+        Does it have a ";" ?
+        /              \
+        YES              NO
+        |                |
+    [Expert Mode]   [Standard Mode]
+        |                |
+      SKIP!       Run Normalization
+    (Stay Safe)    & Sync Logic
 
 why -
 
 - this block will test the function that will ignore normalization we have done in above block beacuse we have more than 1 tag value 
 - this is for safety(you dont want to remove tags that you dont know want to keep)
-- The Ambiguity Problem - if the way has crossing:markings=zebra;lines and node it crosses has crossing:markings=lines - the validator dosent know which one is correct? should it add zebra or remove.
-- standard mappers usually select one option from a dropdown, whereas advance mappers use ; to provide extreme details. the validator will therefore catch simple mistakes(from beginners) and respect the experts who are likely doing something intentional that dosent fit the standard "1-to-1 sysc" model
+- The Ambiguity Problem - if the way has crossing:markings=zebra;lines and node it crosses has crossing:markings=lines - the validator dosent know which one is correct? should it add zebra or remove, therefore it remains silent to avoid making wrong corrections.
+- standard mappers usually select one option from a dropdown, whereas advance mappers use ; to provide extreme details. the validator will therefore catch simple mistakes(from beginners) and respect the expert mappers specialized work.
 
 
 test block -
@@ -289,8 +299,8 @@ test block -
 
 why -
 
-- in countries like UK, mappers often use specific names for crossing- like Pelican, Puffin, Toucan("Two-can" cross(Pedestrian + cyclists))
-- When our validator sees crossing_ref=pelican, even if the mapper didnt explicitly tag crossing:signal=yes, it should know its true.
+- In countries like the UK, mappers often use specific names for crossing types- like Pelican, Puffin, Toucan("Two-can" cross(Pedestrian + cyclists))
+- When the validator sees crossing_ref=pelican, even if the mapper didnt explicitly tag crossing:signal=yes, it should know its true.
 - when validator runs it should trigger mismatched_crossing_tags beacuse way has high-level info(pelican) and node is missing the specific detail(crossing:signal=yes)
 - validator must flag the mismatch and when user clicks "Fix", the node gets the modern signal tag. This ensures that a routing app for a person with visual impairement knows there is a signalized button at the exact spot, even if the orignal mapper used the British "Pelican" term
 
@@ -309,11 +319,9 @@ why -
 - for old data - 
 if the user clicks on an existing crossing that has crossing=informal, validator will flag it that this should be crossing:marking=no
 - It will also provide a fix- when the user clicks "Fix", the code runs on Action that adds crossing:marking=no and removes old crossing=informal tag beacuse it is now redundant.
-- for new data with Legacy Tags(i need to check if we can still search fr presets)
-- if a user try to manually type crossing=informal manually into the editor today:
-- the sync: validator should imediately see a mismatch between the way and the node
-- The Invisible Sync: In many cases, the editor can be configured to "Auto-Fix" or "Sync on Change"
-- The Goal would be to show "Modern" tags in the UI immediately, even if they typed an "Old" tag
+- for new data with Legacy tags
+- if a user try to manually type legacy tag manually into the editor today(beacuse they remember it from years ago) , validator should imediately see 
+- The ultimate UX goal is to "Auto-Fix" or sync these changes so the UI always reflects modern standards, regardless of how the data was entered
 
 test block -
 
