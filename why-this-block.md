@@ -323,6 +323,7 @@ if the user clicks on an existing crossing that has crossing=informal, validator
 - if a user try to manually type legacy tag manually into the editor today(beacuse they remember it from years ago) , validator should imediately see 
 - The ultimate UX goal is to "Auto-Fix" or sync these changes so the UI always reflects modern standards, regardless of how the data was entered
 
+
 test block -
 
     // Point 4.6: Setting legacy crossing from modern signals
@@ -339,11 +340,8 @@ why-
 - We have two ways of saying same thing: 
 Modern(precise): crossing:signal=yes
 Legacy(Broad): crossing=traffic_signal
-- if a mapper adds the modern crossing:signals=yes tag, validator should check if the legacy equivalent is there. If its missing, it should be flagged as mismatch.
-- sync behaviour in this test - createCrossing will sets up a node/way only with modern:signals=yes then validate() will identify that the crossing key is missing or dosent match the signal status, the fix will be add crossing=traffic_signal to match the modern data when triggered 
-
-
-
+- if a mapper adds the modern crossing:signals=yes tag, validator should check if the legacy equivalent is there. If its missing, it should be flagged as missing tag.
+- This test verifies that the validator maintains "Parallel Tagging." If a mapper provides the modern detail, the validator ensures the legacy equivalent is also present so the map remains functional across all platforms, the fix will suggest adding crossing=traffic_signal to ensure the data is complete for both old and new systems.
 
 
 
@@ -359,7 +357,7 @@ test block-
 
 why -
 
-- This block targets legacy 'crossing=yes' tags. In modern OSM standards, if specific markings (like 'zebra') are present, the primary tag should be 'crossing=marked' rather than the vague 'yes'. The validator flags this as a 'mismatched_crossing_tags' error to prompt mappers to upgrade old data to current specifications when they interact with it in the editor.
+- This block targets legacy 'crossing=yes' tags. In modern OSM standards, if specific markings (like 'zebra') are present, the primary tag should be 'crossing=marked' rather than the vague 'yes'. The validator "triggers a modernization fix." to upgrade old data to current specifications when they interact with it in the editor.
  
 
 
@@ -392,6 +390,6 @@ code block -
 why -
 
 
-- it is for a node on single way(no cross section) , if the validator only looked for a parent crossing way, it would see this node and realise there is no way to sync the tag and might incorrectly conclude that beacuse there is no crossing path , the tag shouldnt exist and should be deleted.
+- This test covers nodes that are placed on a road but aren't yet connected to a crossing path (footway). if the validator only looked for a parent crossing way, it would see this node and might incorrectly conclude that beacuse there is no crossing path , the tag shouldnt exist and should be deleted.
 - if the validator automatically suggest, "remove all tags" for standalone node, a user might delete thousands of valid crossings globally just beacuse they werent connected to a crossing way 
-- since there is no way to prove these tags are wrong, its better to not flag an issue
+- since validator cannot prove these tags are wrong, its better to not flag an issue
